@@ -16,4 +16,9 @@ Gem::Specification.new do |s|
   s.platform     = Gem::Platform::RUBY
   s.require_path = 'lib'
   s.rubyforge_project = 'em_mysql2_connection_pool'
+  
+  s.add_runtime_dependency "mysql2"
+  s.add_runtime_dependency "eventmachine"
+  
+  s.add_development_dependency "another", "~> 2"
 end

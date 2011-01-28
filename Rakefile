@@ -1,7 +1,8 @@
 require 'rubygems'
-require 'spec/rake/spectask'
+require 'rspec/core/rake_task'
 
 desc "Run spec with specdoc output"
-Spec::Rake::SpecTask.new do |t|
-  t.spec_opts << '--format specdoc -c'
+
+RSpec::Core::RakeTask.new do |t|
+  t.pattern = 'spec/**/*_spec.rb'
 end

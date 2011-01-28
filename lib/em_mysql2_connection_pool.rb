@@ -11,7 +11,9 @@ class EmMysql2ConnectionPool
   def worker
     proc{ |connection|
       @query_queue.pop do |query|
-        connection.query(query[:sql], query[:opts]).callback do |result|
+        sql = query[:sql].is_a?(Proc) ? query[:sql].call(connection) : query[:sql]
+        
+        connection.query(sql, query[:opts]).callback do |result|
           query[:callback].call result if query[:callback]
           worker.call connection
         end

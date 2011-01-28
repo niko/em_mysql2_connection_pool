@@ -1,4 +1,4 @@
-require 'spec'
+require 'rspec'
 require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/em_mysql2_connection_pool')
 
 # convinience accessors for the spec:
@@ -63,6 +63,20 @@ describe EmMysql2ConnectionPool do
       in_the_reactor_loop do
         @connection_pool.query 'Some Query'
         @connection_stub.should_receive(:query).with('Some Query', {}).and_return(@a_deferrable)
+        @worker.call @connection_stub
+      end
+    end
+    it "work with proc queries" do
+      in_the_reactor_loop do
+        @connection_pool.query proc{'Some Query'}
+        @connection_stub.should_receive(:query).with('Some Query', {}).and_return(@a_deferrable)
+        @worker.call @connection_stub
+      end
+    end
+    it "pass the connection into the proc query" do
+      in_the_reactor_loop do
+        @connection_pool.query proc{|connection| connection}
+        @connection_stub.should_receive(:query).with(@connection_stub, {}).and_return(@a_deferrable)
         @worker.call @connection_stub
       end
     end
