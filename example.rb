@@ -19,8 +19,9 @@ Mysql2::Client.default_query_options.merge! :symbolize_keys => true, :cast_boole
 MySQL = EmMysql2ConnectionPool.new conf
 
 EM.run do
-  MySQL.query my_query do |results|
-    results.each do |result|
+  MySQL.query my_query do |results, affected_rows|
+    puts "Affected rows: #{affected_rows}"
+    results.each do |result, affected_rows|
       p result
     end
     EM.stop
@@ -34,7 +35,8 @@ EM.run do
   
   100.times do
     begin
-      q = MySQL.query('SELECT SLEEP(0.1)'){ |r| puts '.'; raise 'foobar' }
+      q = MySQL.query('SELECT SLEEP(0.1)')
+      q.callback{ |r| puts '.'; raise 'foobar' }
       q.errback{|e| puts "--> #{e.inspect}"}
     end
   end

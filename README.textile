@@ -30,6 +30,18 @@ end
 
 Go ahead, try the example.
 
+h2. Eventmachine Deferrables
+
+As a lot of eventmachine libraries, EmMysql2ConnectionPool not only supports the direct use of a callback, but returns a Eventmachine::Deferrable. On this deferrable further callbacks and errbacks can be defined (see the second example).
+
+h2. Affected rows
+
+If the query succeeds, the result is yielded to the given block or the given callback(s).
+
+As a second argument the number of affected rows is yielded. If you don't need it, your callback doesn't even need to define a second argument.
+
+The rational behind this design decision is as follows: To get hold of the number of affected rows you need to have the connection on which your last query is issued. As the connection "hides" behind the pool and you even would'nt know wether your actual query is really the last query on this very connection, the only way to pass the number of affected rows to the user is the callback.
+
 h2. Advanced usage
 
 Sometimes you need the connection within the query. For example if you want to SQL-escape a string. But when building the query with EmMysql2ConnectionPool you don't have a connection at hand as your query just gets cued. Therefor you can wrap your query into a block which only parameter will be the actual connection executing the query:
