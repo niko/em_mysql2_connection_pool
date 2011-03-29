@@ -15,13 +15,14 @@ class EmMysql2ConnectionPool
     def execute(connection, &block)
       @busy = true
       q = connection.query sql(connection), @opts
-      q.callback{ |result| succeed result, &block }
-      q.errback{  |error|  fail    error,  &block }
+      q.callback{ |result| succeed result, connection.affected_rows, &block }
+      q.errback{  |error|  fail    error, &block }
       return q
     end
     
-    def succeed(result, &block)
-      @deferrable.succeed result
+    def succeed(result, affected_rows, &block)
+      puts "affected_rows: #{affected_rows}"
+      @deferrable.succeed result, affected_rows
     ensure
       @busy and block.call
       @busy = false
@@ -57,7 +58,7 @@ class EmMysql2ConnectionPool
   
   def query(sql, opts={})
     deferrable = EM::DefaultDeferrable.new
-    deferrable.callback{ |res| yield res } if block_given?
+    deferrable.callback{ |result,affected_rows| yield result, affected_rows } if block_given?
     @query_queue.push Query.new(sql, opts, deferrable)
     deferrable
   end

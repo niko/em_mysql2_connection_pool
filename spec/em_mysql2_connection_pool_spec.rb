@@ -96,13 +96,21 @@ describe EmMysql2ConnectionPool do
       @connection_pool.query_queue.should_receive(:push).with(an_instance_of EmMysql2ConnectionPool::Query)
       @connection_pool.query 'foobar'
     end
+    describe "when a block is given" do
+      it "adds a callback with the result and the affected rows" do
+        res = false
+        deferrable = @connection_pool.query('foobar'){|result,affected_rows| res = [result,affected_rows]}
+        deferrable.succeed :res, :rows
+        res.should == [:res, :rows]
+      end
+    end
   end
   
   describe EmMysql2ConnectionPool::Query do
     before(:each) do
       @a_deferrable = EM::DefaultDeferrable.new
       @query = EmMysql2ConnectionPool::Query.new :sql, :opts, @a_deferrable
-      @connection = stub(:a_connection, :query => @a_deferrable)
+      @connection = stub(:a_connection, :query => @a_deferrable, :affected_rows => 1)
     end
     describe "#initialize" do
       it "assigns the query parts" do
@@ -144,6 +152,13 @@ describe EmMysql2ConnectionPool do
       end
       # sort of integrationtests for #success and #fail:
       describe "when succeeding" do
+        it "calls the callback with the result and the affected rows" do
+          res = false
+          this_query = @query.execute(@connection){}
+          this_query.callback{|result,affected_rows| res = [result,affected_rows]}
+          this_query.succeed :res
+          res.should == [:res, 1]
+        end
         it "ensures a given block is executed" do
           probe = false
           
