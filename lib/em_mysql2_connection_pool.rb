@@ -21,7 +21,6 @@ class EmMysql2ConnectionPool
     end
     
     def succeed(result, affected_rows, &block)
-      puts "affected_rows: #{affected_rows}"
       @deferrable.succeed result, affected_rows
     ensure
       @busy and block.call
