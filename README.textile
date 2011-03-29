@@ -2,13 +2,16 @@ h1. EmMysql2ConnectionPool
 
 EmMysql2ConnectionPool generation a pool of MySQL2 connection with the given parameters. If you execute queries on the pool these queries get cued and executed using the next free connection.
 
-Usage:
+h2. Usage
+
+Configure as usual:
 
 <pre><code>conf = {
     :host => "localhost",
     :database => 'my_db',
     :reconnect => true,
     :username => "root",
+    :size => 5,
     # :password => ''
 }
 
@@ -18,11 +21,15 @@ Mysql2::Client.default_query_options.merge! :symbolize_keys => true, :cast_boole
 
 MySQL = EmMysql2ConnectionPool.new conf
 
-EM.run do
+</code></pre>
+
+The only additional option parameter is @:size@ which determines the connection pool size.
+
+The just issue your queries on the connection pool:
+
+<pre><code>EM.run do
   MySQL.query my_query do |results|
-    results.each do |result|
-      p result
-    end
+    p results.to_a
     EM.stop
   end
 end
@@ -32,13 +39,39 @@ Go ahead, try the example.
 
 h2. Eventmachine Deferrables
 
-As a lot of eventmachine libraries, EmMysql2ConnectionPool not only supports the direct use of a callback, but returns a Eventmachine::Deferrable. On this deferrable further callbacks and errbacks can be defined (see the second example).
+As a lot of eventmachine libraries, EmMysql2ConnectionPool not only supports the direct use of a callback, but returns a Eventmachine::Deferrable. On this deferrable further callbacks and errbacks can be defined.
+
+The equivalent to the above, including an errback looks like this:
+
+<pre><code>EM.run do
+  my_query = MySQL.query my_query
+  my_query.errback{ |error| puts "An error occured: #{error}" }
+  my_query.callback do |results|
+    p results.to_a
+    EM.stop
+  end
+end
+</code></pre>
+
 
 h2. Affected rows
 
 If the query succeeds, the result is yielded to the given block or the given callback(s).
 
 As a second argument the number of affected rows is yielded. If you don't need it, your callback doesn't even need to define a second argument.
+
+Again the same example using the number of affected rows:
+
+<pre><code>EM.run do
+  my_query = MySQL.query my_query
+  my_query.errback{ |error| puts "An error occured: #{error}" }
+  my_query.callback do |results, affected_rows|
+    puts "Affected rows: #{affected_rows}"
+    p results.to_a
+    EM.stop
+  end
+end
+</code></pre>
 
 The rational behind this design decision is as follows: To get hold of the number of affected rows you need to have the connection on which your last query is issued. As the connection "hides" behind the pool and you even would'nt know wether your actual query is really the last query on this very connection, the only way to pass the number of affected rows to the user is the callback.
 

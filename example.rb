@@ -13,17 +13,14 @@ conf = {
 }
 
 my_query = "SELECT * FROM track WHERE in_progress != 0 LIMIT 10"
-
 Mysql2::Client.default_query_options.merge! :symbolize_keys => true, :cast_booleans => true
-
 MySQL = EmMysql2ConnectionPool.new conf
+
 
 EM.run do
   MySQL.query my_query do |results, affected_rows|
     puts "Affected rows: #{affected_rows}"
-    results.each do |result, affected_rows|
-      p result
-    end
+    p results.to_a
     EM.stop
   end
 end
