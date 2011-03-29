@@ -2,32 +2,63 @@ require 'mysql2'
 require 'mysql2/em'
 
 class EmMysql2ConnectionPool
+  
+  class Query
+    def initialize(sql, opts, deferrable)
+      @sql, @opts, @deferrable = sql, opts, deferrable
+    end
+    
+    def sql(connection)
+      @sql.respond_to?(:call) ? @sql.call(connection) : @sql
+    end
+    
+    def execute(connection, &block)
+      @busy = true
+      q = connection.query sql(connection), @opts
+      q.callback{ |result| succeed result, &block }
+      q.errback{  |error|  fail    error,  &block }
+      return q
+    end
+    
+    def succeed(result, &block)
+      @deferrable.succeed result
+    ensure
+      @busy and block.call
+      @busy = false
+    end
+    def fail(error, &block)
+      @deferrable.fail error
+    ensure
+      @busy and block.call
+      @busy = false
+    end
+    
+  end
+  
   def initialize(conf)
     @pool_size   = conf[:size] || 10
     @query_queue = EM::Queue.new
     start_queue conf
   end
-
+  
   def worker
     proc{ |connection|
       @query_queue.pop do |query|
-        sql = query[:sql].is_a?(Proc) ? query[:sql].call(connection) : query[:sql]
-        
-        connection.query(sql, query[:opts]).callback do |result|
-          query[:callback].call result if query[:callback]
-          worker.call connection
-        end
+        query.execute(connection){ worker.call connection }
       end
     }
   end
-
+  
   def start_queue(conf)
     @pool_size.times do
       worker.call Mysql2::EM::Client.new conf
     end
   end
-
-  def query(sql, opts={}, &block)
-    @query_queue.push :sql => sql, :opts => opts, :callback => block
+  
+  def query(sql, opts={})
+    deferrable = EM::DefaultDeferrable.new
+    deferrable.callback{ |res| yield res } if block_given?
+    @query_queue.push Query.new(sql, opts, deferrable)
+    deferrable
   end
 end
