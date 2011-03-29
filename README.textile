@@ -1,5 +1,7 @@
 h1. EmMysql2ConnectionPool
 
+EmMysql2ConnectionPool generation a pool of MySQL2 connection with the given parameters. If you execute queries on the pool these queries get cued and executed using the next free connection.
+
 Usage:
 
 <pre><code>conf = {
@@ -27,3 +29,12 @@ end
 </code></pre>
 
 Go ahead, try the example.
+
+h2. Advanced usage
+
+Sometimes you need the connection within the query. For example if you want to SQL-escape a string. But when building the query with EmMysql2ConnectionPool you don't have a connection at hand as your query just gets cued. Therefor you can wrap your query into a block which only parameter will be the actual connection executing the query:
+
+<pre><code>MySQL.query proc{ |conn|
+  escaped_name = conn.escape some_string
+  "SELECT * FROM my_table WHERE name is '#{escaped_name}'"
+}</code></pre>
