@@ -41,6 +41,10 @@ class EmMysql2ConnectionPool
     start_queue conf
   end
   
+  def query_backlog
+    @query_queue.size
+  end
+  
   def worker
     proc{ |connection|
       @query_queue.pop do |query|

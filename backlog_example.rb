@@ -17,24 +17,17 @@ Mysql2::Client.default_query_options.merge! :symbolize_keys => true, :cast_boole
 MySQL = EmMysql2ConnectionPool.new conf
 
 EM.run do
-  MySQL.query my_query do |results, affected_rows|
-    puts "Affected rows: #{affected_rows}"
-    p results.to_a
-    EM.stop
-  end
-end
-
-
-# Inducing some errors:
-EM.run do
-  EM.add_timer(2){ EM.stop }
-  
-  100.times do
-    begin
-      q = MySQL.query('SELECT SLEEP(0.1)')
-      q.callback{ |r| puts '.'; raise 'foobar' }
-      q.errback{|e| puts "--> #{e.inspect}"}
+  EM.add_periodic_timer 1 do
+    puts `ps -o rss= -p #{Process.pid}`
+    puts MySQL.query_backlog
+    
+    # Increase number of parallel queries beyond what DB is able to handle.
+    # It's about 5000 on my MBP.
+    # See memory usage increasing.
+    3000.times do
+      MySQL.query('SELECT RAND() AS r') do
+        print '.'
+      end
     end
   end
 end
-

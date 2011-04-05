@@ -105,6 +105,12 @@ describe EmMysql2ConnectionPool do
       end
     end
   end
+  describe "#query_backlog" do
+    it "return the size of the query queue" do
+      @connection_pool.instance_variable_set('@query_queue', [1,2,3,4,5])
+      @connection_pool.query_backlog.should == 5
+    end
+  end
   
   describe EmMysql2ConnectionPool::Query do
     before(:each) do
