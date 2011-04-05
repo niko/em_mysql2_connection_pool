@@ -12,7 +12,6 @@ conf = {
     # :password => ''
 }
 
-my_query = "SELECT * FROM track WHERE in_progress != 0 LIMIT 10"
 Mysql2::Client.default_query_options.merge! :symbolize_keys => true, :cast_booleans => true
 MySQL = EmMysql2ConnectionPool.new conf
 
