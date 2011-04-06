@@ -4,8 +4,8 @@ require 'mysql2/em'
 class EmMysql2ConnectionPool
   
   class Query
-    def initialize(sql, opts, deferrable)
-      @sql, @opts, @deferrable = sql, opts, deferrable
+    def initialize(sql, opts, deferrable, on_error = nil)
+      @sql, @opts, @deferrable, @on_error = sql, opts, deferrable, on_error
     end
     
     def sql(connection)
@@ -14,10 +14,13 @@ class EmMysql2ConnectionPool
     
     def execute(connection, &block)
       @busy = true
-      q = connection.query sql(connection), @opts
+      query_text = sql(connection)
+      q = connection.query query_text, @opts
       q.callback{ |result| succeed result, connection.affected_rows, &block }
-      q.errback{  |error|  fail    error, &block }
+      q.errback{  |error|  fail    error, query_text, &block }
       return q
+    rescue Exception => e
+      do_error(e, query_text)
     end
     
     def succeed(result, affected_rows, &block)
@@ -26,18 +29,25 @@ class EmMysql2ConnectionPool
       @busy and block.call
       @busy = false
     end
-    def fail(error, &block)
+    def fail(error, sql, &block)
       @deferrable.fail error
     ensure
+      do_error(error, sql)
       @busy and block.call
       @busy = false
     end
     
+    def do_error(e, sql)
+      if @on_error.respond_to?(:call)
+        @on_error.call(e, sql)
+      end
+    end
   end
   
   def initialize(conf)
     @pool_size   = conf[:size] || 10
     @query_queue = EM::Queue.new
+    @on_error    = conf[:on_error]
     start_queue conf
   end
   
@@ -62,7 +72,7 @@ class EmMysql2ConnectionPool
   def query(sql, opts={})
     deferrable = EM::DefaultDeferrable.new
     deferrable.callback{ |result,affected_rows| yield result, affected_rows } if block_given?
-    @query_queue.push Query.new(sql, opts, deferrable)
+    @query_queue.push Query.new(sql, opts, deferrable, @on_error)
     deferrable
   end
 end
