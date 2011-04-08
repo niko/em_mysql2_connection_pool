@@ -1,4 +1,4 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), 'lib/em_mysql2_connection_pool')
+require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/em_mysql2_connection_pool')
 
 conf = {
     :host => "localhost",

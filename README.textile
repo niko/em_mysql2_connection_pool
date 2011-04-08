@@ -23,7 +23,7 @@ MySQL = EmMysql2ConnectionPool.new conf
 
 </code></pre>
 
-The only additional option parameter is @:size@ which determines the connection pool size.
+The only additional option parameters are @:size@ (which determines the connection pool size) and @:on_error@ (which takes a proc to define the error behavious on a connection basis).
 
 The just issue your queries on the connection pool:
 

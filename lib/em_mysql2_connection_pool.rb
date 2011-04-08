@@ -14,29 +14,43 @@ class EmMysql2ConnectionPool
     
     def execute(connection, &block)
       @busy = true
-      q = connection.query sql(connection), @opts
+      @query_text = sql(connection)
+      q = connection.query @query_text, @opts
       q.callback{ |result| succeed result, connection.affected_rows, &block }
-      q.errback{  |error|  fail    error, &block }
+      q.errback{  |error|  fail error, @query_text, &block }
       return q
     end
     
     def succeed(result, affected_rows, &block)
       @deferrable.succeed result, affected_rows
+    rescue StandardError => error
+      fail error, @query_text
     ensure
       @busy and block.call
       @busy = false
     end
-    def fail(error, &block)
-      @deferrable.fail error
+    
+    def fail(error, sql, &block)
+      @deferrable.errback &default_errback unless has_errbacks?
+      @deferrable.fail error, @query_text
     ensure
       @busy and block.call
       @busy = false
+    end
+    
+    def has_errbacks?
+      !@deferrable.errbacks.nil?
+    end
+    
+    def default_errback
+      proc{ |error, sql| puts "#{error.class}: '#{error.message}' with query #{sql} in #{error.backtrace.first}" }
     end
     
   end
   
   def initialize(conf)
     @pool_size   = conf[:size] || 10
+    @on_error    = conf[:on_error]
     @query_queue = EM::Queue.new
     start_queue conf
   end
@@ -59,10 +73,23 @@ class EmMysql2ConnectionPool
     end
   end
   
+  def on_error(&block)
+    @on_error = block
+  end
+  
   def query(sql, opts={})
-    deferrable = EM::DefaultDeferrable.new
+    deferrable = EM::DefaultDeferrableWithErrbacksAccessor.new
     deferrable.callback{ |result,affected_rows| yield result, affected_rows } if block_given?
+    deferrable.errback &@on_error if @on_error
+    
     @query_queue.push Query.new(sql, opts, deferrable)
     deferrable
+  end
+end
+
+module EventMachine
+  class DefaultDeferrableWithErrbacksAccessor
+    include Deferrable
+    attr_accessor :errbacks
   end
 end
