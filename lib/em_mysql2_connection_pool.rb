@@ -17,20 +17,20 @@ class EmMysql2ConnectionPool
       @query_text = sql(connection)
       q = connection.query @query_text, @opts
       q.callback{ |result| succeed result, connection.affected_rows, &block }
-      q.errback{  |error|  fail error, @query_text, &block }
+      q.errback{  |error|  fail error, &block }
       return q
     end
     
     def succeed(result, affected_rows, &block)
       @deferrable.succeed result, affected_rows
     rescue StandardError => error
-      fail error, @query_text
+      fail error
     ensure
       @busy and block.call
       @busy = false
     end
     
-    def fail(error, sql, &block)
+    def fail(error, &block)
       @deferrable.errback &default_errback unless has_errbacks?
       @deferrable.fail error, @query_text
     ensure

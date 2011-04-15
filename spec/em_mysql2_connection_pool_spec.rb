@@ -244,21 +244,21 @@ describe EmMysql2ConnectionPool do
       describe "when the query doesn't have an errback" do
         it "adds the default errback" do
           @a_deferrable.should_receive(:errback)
-          @query.fail(@sql_error, "sql")
+          @query.fail(@sql_error)
         end
       end
       describe "when the query already has an errback" do
         it "adds the default errback" do
           @a_deferrable.errback{}
           @a_deferrable.should_not_receive(:errback)
-          @query.fail(@sql_error, "sql")
+          @query.fail(@sql_error)
         end
       end
       describe "when the connection has been busy so far" do
         it "calls the given block " do
           a = 0
           @query.instance_variable_set('@busy', true)
-          @query.fail(@sql_error, "sql"){ a = 1}
+          @query.fail(@sql_error){ a = 1}
           a.should == 1
         end
       end
@@ -266,17 +266,17 @@ describe EmMysql2ConnectionPool do
         it "doesn't" do
           a = 0
           @query.instance_variable_set('@busy', false)
-          @query.fail(@sql_error, "sql"){ a = 1}
+          @query.fail(@sql_error){ a = 1}
           a.should == 0
         end
       end
       it "calls #fail on the deferrable" do
         @a_deferrable.should_receive(:fail)
-        @query.fail(@sql_error, "sql")
+        @query.fail(@sql_error)
       end
       it "set @busy to false" do
         @query.instance_variable_set('@busy', true)
-        @query.fail(@sql_error, "sql"){}
+        @query.fail(@sql_error){}
         @query.instance_variable_get('@busy').should be_false
       end
     end
