@@ -173,6 +173,13 @@ describe EmMysql2ConnectionPool do
         this_query = @query.execute(@connection)
         this_query.fail
       end
+      it "catches mysql2 errors" do
+        connection = stub(:a_connection)
+        error = Mysql2::Error.new 'foo'
+        connection.should_receive(:query).and_raise(error)
+        @query.should_receive(:fail).with(error)
+        this_query = @query.execute(connection)
+      end
       # sort of integrationtests for #success and #fail:
       describe "when succeeding" do
         it "calls the callback with the result and the affected rows" do

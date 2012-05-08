@@ -19,6 +19,8 @@ class EmMysql2ConnectionPool
       q.callback{ |result| succeed result, connection.affected_rows, &block }
       q.errback{  |error|  fail error, &block }
       return q
+    rescue Mysql2::Error => error
+      fail error, &block
     end
     
     def succeed(result, affected_rows, &block)
