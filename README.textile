@@ -1,6 +1,6 @@
 h1. EmMysql2ConnectionPool
 
-EmMysql2ConnectionPool generation a pool of MySQL2 connection with the given parameters. If you execute queries on the pool these queries get cued and executed using the next free connection.
+EmMysql2ConnectionPool generates a pool of MySQL2 connection with the given parameters. If you execute queries on the pool, these queries get cued and executed using the next free connection.
 
 h2. Usage
 
@@ -23,7 +23,7 @@ MySQL = EmMysql2ConnectionPool.new conf
 
 </code></pre>
 
-The only additional option parameters are @:size@ (which determines the connection pool size) and @:on_error@ (which takes a proc to define the error behavious on a connection basis).
+The only additional option parameters are @:size@ (which determines the connection pool size) and @:on_error@ (which takes a proc to define the error behaviour on a connection basis).
 
 The just issue your queries on the connection pool:
 
@@ -39,9 +39,9 @@ Go ahead, try the example.
 
 h2. Eventmachine Deferrables
 
-As a lot of eventmachine libraries, EmMysql2ConnectionPool not only supports the direct use of a callback, but returns a Eventmachine::Deferrable. On this deferrable further callbacks and errbacks can be defined.
+As a lot of eventmachine libraries, EmMysql2ConnectionPool not only supports the direct use of a callback, but returns an Eventmachine::Deferrable. Further callbacks and errbacks can be defined on this deferrable.
 
-The equivalent to the above, including an errback looks like this:
+The equivalent of the above, including an errback, looks like this:
 
 <pre><code>EM.run do
   my_query = MySQL.query my_query
@@ -58,7 +58,7 @@ h2. Affected rows
 
 If the query succeeds, the result is yielded to the given block or the given callback(s).
 
-As a second argument the number of affected rows is yielded. If you don't need it, your callback doesn't even need to define a second argument.
+As a second argument, the number of affected rows is yielded. If you don't need it, your callback doesn't even need to define a second argument.
 
 Again the same example using the number of affected rows:
 
@@ -73,11 +73,11 @@ Again the same example using the number of affected rows:
 end
 </code></pre>
 
-The rational behind this design decision is as follows: To get hold of the number of affected rows you need to have the connection on which your last query is issued. As the connection "hides" behind the pool and you even would'nt know wether your actual query is really the last query on this very connection, the only way to pass the number of affected rows to the user is the callback.
+The rationale behind this design decision is as follows: To get hold of the number of affected rows, you need to have the connection on which your last query is issued. As the connection "hides" behind the pool and you even wouldn't know whether your actual query is really the last query on this connection, the only way to pass the number of affected rows to the user is the callback.
 
 h2. Advanced usage
 
-Sometimes you need the connection within the query. For example if you want to SQL-escape a string. But when building the query with EmMysql2ConnectionPool you don't have a connection at hand as your query just gets cued. Therefor you can wrap your query into a block which only parameter will be the actual connection executing the query:
+Sometimes you need the connection within the query. For example if you want to SQL-escape a string. But when building the query with EmMysql2ConnectionPool you don't have a connection at hand as your query just gets cued. Therefore you can wrap your query into a block whose only parameter will be the actual connection executing the query:
 
 <pre><code>MySQL.query proc{ |conn|
   escaped_name = conn.escape some_string
