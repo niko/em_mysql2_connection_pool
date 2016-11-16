@@ -28,7 +28,7 @@ class EmMysql2ConnectionPool
     rescue StandardError => error
       fail error
     ensure
-      @busy and block.call
+      @busy and block and block.call
       @busy = false
     end
     
@@ -36,7 +36,7 @@ class EmMysql2ConnectionPool
       @deferrable.errback &default_errback unless has_errbacks?
       @deferrable.fail error, @query_text
     ensure
-      @busy and block.call
+      @busy and block and block.call
       @busy = false
     end
     
