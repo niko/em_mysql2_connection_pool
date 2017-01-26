@@ -15,40 +15,40 @@ describe EmMysql2ConnectionPool do
   end
 
   before(:each) do
-    @query_stub = stub('query', :callback => :foo, :errback => :bar)
-    @connection_stub = stub('connection', :query => @query_stub)
+    @query_stub = instance_double('query', callback: :foo, errback: :bar)
+    @connection_stub = instance_double('connection', query: @query_stub)
 
-    Mysql2::EM::Client.stub! :new => @connection_stub
+    allow(Mysql2::EM::Client).to receive(:new){ @connection_stub }
 
-    @connection_pool = EmMysql2ConnectionPool.new :size => 1
+    @connection_pool = EmMysql2ConnectionPool.new size: 1
   end
   describe "#initialize" do
     describe "ivars" do
       describe "@pool_size" do
         it "should be assigned via the conf argument" do
-          cp = EmMysql2ConnectionPool.new :size => 5
-          cp.pool_size.should == 5
+          cp = EmMysql2ConnectionPool.new size: 5
+          expect(cp.pool_size).to eq 5
         end
         it "should default to 10" do
           cp = EmMysql2ConnectionPool.new({})
-          cp.pool_size.should == 10
+          expect(cp.pool_size).to eq 10
         end
       end
       describe "@on_error" do
         it "should be assigned via the conf argument" do
-          cp = EmMysql2ConnectionPool.new :on_error => :some_proc
-          cp.instance_variable_get('@on_error').should == :some_proc
+          cp = EmMysql2ConnectionPool.new on_error: :some_proc
+          expect(cp.instance_variable_get('@on_error')).to eq :some_proc
         end
       end
       describe "@query_queue" do
         it "should be an EM::Queue" do
-          @connection_pool.query_queue.should be_a(EM::Queue)
+          expect(@connection_pool.query_queue).to be_a(EM::Queue)
         end
       end
     end
     it "should start the queue with the configuration" do
-      conf = {:foo => :bar}
-      @connection_pool.should_receive(:start_queue).with(conf)
+      conf = {foo: :bar}
+      expect(@connection_pool).to receive(:start_queue).with(conf)
       @connection_pool.send :initialize, conf
     end
   end
@@ -56,26 +56,26 @@ describe EmMysql2ConnectionPool do
     before(:each) do
       @a_deferrable = EM::DefaultDeferrable.new
       @worker = @connection_pool.worker
-      @connection_stub = connection = stub('connection')
+      @connection_stub = connection = instance_double('connection')
     end
     it "should pop a query from the queue" do
       in_the_reactor_loop do
         @connection_pool.query 'Some Query'
-        @connection_pool.query_queue.should_receive(:pop).at_least(:once)
+        expect(@connection_pool.query_queue).to receive(:pop).at_least(:once)
         @worker.call @connection_stub
       end
     end
     it "should query the connection" do
       in_the_reactor_loop do
         @connection_pool.query 'Some Query'
-        @connection_stub.should_receive(:query).with('Some Query', {}).and_return(@a_deferrable)
+        expect(@connection_stub).to receive(:query).with('Some Query', {}).and_return(@a_deferrable)
         @worker.call @connection_stub
       end
     end
     it "work with proc queries" do
       in_the_reactor_loop do
         @connection_pool.query proc{'Some Query'}
-        @connection_stub.should_receive(:query).with('Some Query', {}).and_return(@a_deferrable)
+        expect(@connection_stub).to receive(:query).with('Some Query', {}).and_return(@a_deferrable)
         @worker.call @connection_stub
       end
     end
@@ -84,22 +84,22 @@ describe EmMysql2ConnectionPool do
     it "should add @pool_size connections to the pool" do
       @connection_pool.pool_size = 10
 
-      Mysql2::EM::Client.should_receive(:new).exactly(10).times
+      expect(Mysql2::EM::Client).to receive(:new).exactly(10).times
       @connection_pool.start_queue({})
     end
     it "should start querying with each" do
       @connection_pool.pool_size = 10
-      Mysql2::EM::Client.stub(:new => :connection)
+      allow(Mysql2::EM::Client).to receive(:new){ :connection }
       worker = proc{}
-      @connection_pool.stub(:worker => worker)
+      allow(@connection_pool).to receive(:worker){ worker }
 
-      worker.should_receive(:call).with(:connection).exactly(10).times
+      expect(worker).to receive(:call).with(:connection).exactly(10).times
       @connection_pool.start_queue({})
     end
   end
   describe "#query" do
     it "should push the query to the queue" do
-      @connection_pool.query_queue.should_receive(:push).with(an_instance_of EmMysql2ConnectionPool::Query)
+      expect(@connection_pool.query_queue).to receive(:push).with(an_instance_of EmMysql2ConnectionPool::Query)
       @connection_pool.query 'foobar'
     end
     describe "when a block is given" do
@@ -107,7 +107,7 @@ describe EmMysql2ConnectionPool do
         res = false
         deferrable = @connection_pool.query('foobar'){|result,affected_rows| res = [result,affected_rows]}
         deferrable.succeed :res, :rows
-        res.should == [:res, :rows]
+        expect(res).to eq [:res, :rows]
       end
     end
     describe "when a global on_error handler is set" do
@@ -115,69 +115,69 @@ describe EmMysql2ConnectionPool do
         errback = proc{}
         @connection_pool.on_error &errback
         deferrable = @connection_pool.query('foobar')
-        deferrable.errbacks.should == [errback]
+        expect(deferrable.errbacks).to eq [errback]
       end
     end
   end
   describe "#query_backlog" do
     it "return the size of the query queue" do
       @connection_pool.instance_variable_set('@query_queue', [1,2,3,4,5])
-      @connection_pool.query_backlog.should == 5
+      expect(@connection_pool.query_backlog).to eq 5
     end
   end
   describe EmMysql2ConnectionPool::Query do
     before(:each) do
       @a_deferrable = EM::DefaultDeferrableWithErrbacksAccessor.new
       @query = EmMysql2ConnectionPool::Query.new :sql, :opts, @a_deferrable
-      @connection = stub(:a_connection, :query => @a_deferrable, :affected_rows => 1)
+      @connection = instance_double('connection', :a_connection, query: @a_deferrable, affected_rows: 1)
     end
     describe "#initialize" do
       it "assigns the query parts" do
         query = EmMysql2ConnectionPool::Query.new :sql, :opts, :deferrable
-        query.instance_variable_get('@sql').should == :sql
-        query.instance_variable_get('@opts').should == :opts
-        query.instance_variable_get('@deferrable').should == :deferrable
+        expect(query.instance_variable_get('@sql')).to eq :sql
+        expect(query.instance_variable_get('@opts')).to eq :opts
+        expect(query.instance_variable_get('@deferrable')).to eq :deferrable
       end
     end
     describe "#sql" do
       describe "without a given proc" do
         it "returns just the sql" do
-          @query.sql(:conn).should == :sql
+          expect(@query.sql(:conn)).to eq :sql
         end
       end
       describe "with a proc given as sql" do
         it "calls the proc" do
-          EmMysql2ConnectionPool::Query.new(proc{:proc_sql}, nil, nil).sql(:conn).should == :proc_sql
+          expect(EmMysql2ConnectionPool::Query.new(proc{:proc_sql}, nil, nil).sql(:conn)).to eq :proc_sql
         end
         it "calls the proc with the connection given" do
-          EmMysql2ConnectionPool::Query.new(proc{|c| c}, nil, nil).sql(:conn).should == :conn
+          expect(EmMysql2ConnectionPool::Query.new(proc{|c| c}, nil, nil).sql(:conn)).to eq :conn
         end
       end
     end
     describe "#execute" do
       it "sets @busy" do
         @query.execute @connection
-        @query.instance_variable_get('@busy').should be_true
+        expect(@query.instance_variable_get('@busy')).to be_truthy
       end
       it "executes the query on the given connection" do
-        @connection.should_receive(:query).with(:sql, :opts).and_return(@a_deferrable)
+        expect(@connection).to receive(:query).with(:sql, :opts).and_return(@a_deferrable)
         @query.execute @connection
       end
       it "succeeds on success" do
-        @a_deferrable.should_receive(:succeed)
+        expect(@a_deferrable).to receive(:succeed)
         this_query = @query.execute @connection
         this_query.succeed
       end
       it "fails on error" do
-        @a_deferrable.should_receive(:fail)
+        expect(@a_deferrable).to receive(:fail)
         this_query = @query.execute(@connection)
         this_query.fail
       end
       it "catches mysql2 errors" do
-        connection = stub(:a_connection)
+        connection = instance_double('connection', :a_connection)
         error = Mysql2::Error.new 'foo'
-        connection.should_receive(:query).and_raise(error)
-        @query.should_receive(:fail).with(error)
+        expect(connection).to receive(:query).and_raise(error)
+        expect(@query).to receive(:fail).with(error)
         this_query = @query.execute(connection)
       end
       # sort of integrationtests for #success and #fail:
@@ -187,7 +187,7 @@ describe EmMysql2ConnectionPool do
           this_query = @query.execute(@connection){}
           this_query.callback{|result,affected_rows| res = [result,affected_rows]}
           this_query.succeed :res
-          res.should == [:res, 1]
+          expect(res).to eq [:res, 1]
         end
         it "ensures a given block is executed" do
           probe = false
@@ -195,7 +195,7 @@ describe EmMysql2ConnectionPool do
           this_query = @query.execute(@connection){ probe = true }
           this_query.callback{ raise 'HELL' }
           this_query.succeed rescue nil
-          probe.should be_true
+          expect(probe).to be_truthy
         end
       end
       describe "when failing" do
@@ -205,19 +205,19 @@ describe EmMysql2ConnectionPool do
           this_query = @query.execute(@connection){ probe = true }
           this_query.errback{ raise 'HELL' }
           this_query.fail rescue nil
-          probe.should be_true
+          expect(probe).to be_truthy
         end
       end
     end
     describe "#succeed" do
       it "calls succeed on the deferrable" do
-        @a_deferrable.should_receive(:succeed)
+        expect(@a_deferrable).to receive(:succeed)
         @query.succeed("result", 3)
       end
       describe "when an error occurs" do
         it "calls #fail" do
           @a_deferrable.callback{ raise }
-          @query.should_receive(:fail)
+          expect(@query).to receive(:fail)
           @query.succeed("result", 3)
         end
       end
@@ -226,7 +226,7 @@ describe EmMysql2ConnectionPool do
           a = 0
           @query.instance_variable_set('@busy', true)
           @query.succeed("result", 3){ a = 1}
-          a.should == 1
+          expect(a).to eq 1
         end
       end
       describe "when the connection has NOT been busy so far" do
@@ -234,13 +234,13 @@ describe EmMysql2ConnectionPool do
           a = 0
           @query.instance_variable_set('@busy', false)
           @query.succeed("result", 3){ a = 1}
-          a.should == 0
+          expect(a).to eq 0
         end
       end
       it "set @busy to false" do
         @query.instance_variable_set('@busy', true)
         @query.succeed("result", 3){}
-        @query.instance_variable_get('@busy').should be_false
+        expect(@query.instance_variable_get('@busy')).to be_falsey
       end
     end
     describe "#fail" do
@@ -250,14 +250,14 @@ describe EmMysql2ConnectionPool do
       end
       describe "when the query doesn't have an errback" do
         it "adds the default errback" do
-          @a_deferrable.should_receive(:errback)
+          expect(@a_deferrable).to receive(:errback)
           @query.fail(@sql_error)
         end
       end
       describe "when the query already has an errback" do
         it "adds the default errback" do
           @a_deferrable.errback{}
-          @a_deferrable.should_not_receive(:errback)
+          expect(@a_deferrable).not_to receive(:errback)
           @query.fail(@sql_error)
         end
       end
@@ -266,7 +266,7 @@ describe EmMysql2ConnectionPool do
           a = 0
           @query.instance_variable_set('@busy', true)
           @query.fail(@sql_error){ a = 1}
-          a.should == 1
+          expect(a).to eq 1
         end
       end
       describe "when the connection has NOT been busy so far" do
@@ -274,17 +274,17 @@ describe EmMysql2ConnectionPool do
           a = 0
           @query.instance_variable_set('@busy', false)
           @query.fail(@sql_error){ a = 1}
-          a.should == 0
+          expect(a).to eq 0
         end
       end
       it "calls #fail on the deferrable" do
-        @a_deferrable.should_receive(:fail)
+        expect(@a_deferrable).to receive(:fail)
         @query.fail(@sql_error)
       end
       it "set @busy to false" do
         @query.instance_variable_set('@busy', true)
         @query.fail(@sql_error){}
-        @query.instance_variable_get('@busy').should be_false
+        expect(@query.instance_variable_get('@busy')).to be_falsey
       end
     end
     describe "#has_errbacks?" do
