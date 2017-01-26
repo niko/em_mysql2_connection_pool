@@ -173,6 +173,17 @@ describe EmMysql2ConnectionPool do
         this_query = @query.execute(@connection)
         this_query.fail
       end
+      it "fails with block when the succeed callback raises" do
+        error = StandardError.new 'hu!'
+        allow(@a_deferrable).to receive(:succeed).and_raise(error)
+
+        some_block = proc{}
+        expect(@query).to receive(:fail) do |err, &block|
+          expect(block).to eq some_block
+        end
+
+        @query.succeed [:result], 0, &some_block
+      end
       it "catches mysql2 errors" do
         connection = instance_double('connection', :a_connection)
         error = Mysql2::Error.new 'foo'
